@@ -13,9 +13,14 @@ To begin, let's rent a machine from gcloud:
 
 .. code:: bash
 
-   $ gcloud compute instances create mpi-test --machine-type n1-standard-4 --image ubuntu-15-10 --preemptible
+   $ gcloud compute instances create mpi-test --machine-type n1-standard-4 \
+     --image ubuntu-15-10 --preemptible --scopes=compute-rw
 
-(We'll make it preemptible so if we forget to turn it off, it'll be cheaper.)
+A bit of explanation:
+
+  - We make it preemptible so if we forget to turn it off, it'll be cheaper.
+  - We give it the 'compute-rw' scope so that it has permission to ssh between nodes
+  - We choose the 'n1-standard-4' machine type so we have 4 cores to practice parallelism
 
 Let's go to this instance and install our tools:
 
@@ -68,11 +73,13 @@ And let's use this to create a cluster of identical instances:
 
 .. code:: bash
 
-   $ gcloud compute instances create mpi-node-{1..5} --metadata-from-file startup-script=startup.sh --image ubuntu-15-10 --machine-type n1-standard-4 --preemptible
+   $ gcloud compute instances create mpi-node-{1..5} --metadata-from-file startup-script=startup.sh \
+     --image ubuntu-15-10 --machine-type n1-standard-4 --preemptible --scopes=compute-rw
    ERROR: (gcloud.compute.instances.create) Some requests did not succeed:
    	  - Quota 'CPUS' exceeded.  Limit: 8.0
 
 Whoops! We need to increase our CPU quota limit before proceeding, we need to fill out quota_ change request form. Once this is done, re-run the previous command to obtain you compute nodes.
+
 
 
 
