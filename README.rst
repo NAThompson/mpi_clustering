@@ -118,7 +118,7 @@ But this gives us a problem which thwart our goal of non-interactivity:
    ECDSA key fingerprint is SHA256:W42YmeCOE+bwZqyLx8YvM1spcEBbEHreQkHK+DYTxZs.
    Are you sure you want to continue connecting (yes/no)?
 
-This is a pain; here's a partial solution:
+This is a pain; here's an easy fix (with an obvious security implication):
 
 .. code:: bash
 
@@ -132,5 +132,92 @@ And then we get a different problem:
    ssh: connect to host mpi-node-1 port 22: Connection timed out
    $ mpirun -np $(nproc) --hostfile hosts.txt mpi_hello.x
    Permission denied (publickey).
+  
+Unfortunately, we have to learn about SSH before continuing:
+
+--------------------
+A diversion into ssh
+--------------------
+
+Since MPI performs internode communication over ssh, the following basic operation must succeed before we can have any hope of running multinode MPI:
+
+.. code:: bash
+
+   local-host$ ssh remote-host
+   
+For ssh to work, the remote machine must authenticate the local, and the local must authenticate the remote.
+We've already told our local machine to not worry about authenticating the remote via
+
+.. code:: bash
+
+   local-host$ echo "StrictHostKeyChecking no" | sudo tee --append /etc/ssh/ssh_config
+
+This ensure that we will not be prompted about trusting the remote machine the first time we connect.
+To make what is happening a bit more transparent, we run the following command:
+
+.. code:: bash
+
+   local-host$ echo "HashKnownHosts No" | sudo tee --append ~/.ssh/config
+
+Then we attempt to connect to the remote via:
+
+.. code:: bash
+
+   local-host$ ssh remote-host
+   Warning: Permanently added 'remote,10.240.0.9' (ECDSA) to the list of known hosts.
+   Permission denied (publickey).
+   local-host$ cat ~/.ssh/known_hosts
+   remote-host,10.240.0.9 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBL1HBgcYP+Q+S+jmcZEKnVgm5AZXWychzkB10nKMjYcYLeAfPkVJwTkrq5g+ILslzSEf5RlXRfOzHQBGBoiaYKY=
+
+This is copied from the remote:
+
+.. code:: bash
+
+   remote-host$ sudo cat /etc/ssh/ssh_host_ecdsa_key.pub
+   ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBL1HBgcYP+Q+S+jmcZEKnVgm5AZXWychzkB10nKMjYcYLeAfPkVJwTkrq5g+ILslzSEf5RlXRfOzHQBGBoiaYKY= root@remote-host
+   
+If at some point in the future, the hash doesn't match, we get a stern warning about a possible man-in-the-middle attack.   
+   
+Now we need to authenticate the local node to the remote node which we are logging in to.
+First we generate generate ssh keys on the local node:
+
+.. code:: bash
+
+   local-node$ ssh-keygen -t rsa
+   Generating public/private rsa key pair.
+   Enter file in which to save the key (/home/nthompson/.ssh/id_rsa):
+   Enter passphrase (empty for no passphrase):
+   Enter same passphrase again:
+   Your identification has been saved in /home/nthompson/.ssh/id_rsa.
+   Your public key has been saved in /home/nthompson/.ssh/id_rsa.pub.
+
+Now we just scp mpi_rsa.pub over to our remote-node, and we're good right?
+No, we aren't, because scp also required ssh!
+So we have to find a node that has permissions to ssh into both local and remote, and copy the public key around that way:
+
+.. code:: bash
+
+   priviledged-node$ sftp nthompson@local-node:.ssh
+   > get id_rsa.pub
+   Fetching /home/nthompson/.ssh/id_rsa.pub to id_rsa.pub
+   /home/nthompson/.ssh/id_rsa.pub                                                     100%  398     0.4KB/s   00:00
+   > bye
+   priviledged-node$ scp id_rsa.pub nthompson@remote-node:.ssh
+   priviledged-node$ ssh remote-node
+   remote-node$ cd ~/.ssh; cat id_rsa.pub >> authorized_keys
+   
+This is a super-awkward procedure; is there a better way?
+
+---------------
+Standard Images
+---------------
+
+If all of our compute nodes launched off the same VM snapshot, then we would be guaranteed that the ssh keys would be in the correct location.
+Note that this can also be achieved by mounting networked disks, but we'll get additional wins via a VM snapshot:
+
+.. code:: bash
+
+   $ gcloud compute instances create standard-image --metadata-from-file startup-script=startup.sh \
+     --image ubuntu-15-10 --machine-type n1-standard-4 --preemptible --scopes=compute-rw,storage-full
 
 .. _quota: https://docs.google.com/a/google.com/forms/d/1vb2MkAr9JcHrp6myQ3oTxCyBv2c7Iyc5wqIKqE3K4IE/viewform?entry.1036535597&entry.1823281902&entry.1934621431&entry.612627929&entry.666100773&entry.2004330804&entry.1287827925&entry.1005864466&entry.511996332&entry.308842821&entry.1506342651&entry.1193238839=No&entry.1270586847&entry.394661533&entry.1276962733&entry.1256670372&entry.1742484064&entry.15530
