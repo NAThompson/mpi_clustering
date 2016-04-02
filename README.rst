@@ -29,7 +29,7 @@ Let's go to this instance and install our tools:
    $ gcloud compute ssh mpi-test
    mpi-test$ sudo apt-get update && sudo apt-get install -y gcc libopenmpi-dev openmpi-bin
 
-Now let's run a super-trivial example; call it mpi_example.c
+Now let's run a super-trivial example; call it mpi_hello.c
 
 .. code:: c
 
@@ -52,9 +52,9 @@ Now we build and run via
 
 .. code:: bash
 
-    $ gcc -c mpi_example.c
-    $ gcc -o mpi_example mpi_example.o -lmpi
-    $ mpirun -np $(nproc) mpi_example
+    $ gcc -c mpi_hello.c
+    $ gcc -o mpi_hello mpi_hello.o -lmpi
+    $ mpirun -np $(nproc) mpi_hello
     Hello world from process 2 of 4
     Hello world from process 3 of 4
     Hello world from process 1 of 4
