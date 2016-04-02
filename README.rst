@@ -95,10 +95,7 @@ In order to run our job using our newly created nodes, we need to create a "host
 
 .. code:: bash
 
-   for i in `seq 1 5`;
-   do
-	echo "mpi-node-$i" >> hosts.txt"
-   done
+   $ for i in `seq 1 5`; do echo "mpi-node-$i" >> hosts.txt; done
 
 Now we run with
 
