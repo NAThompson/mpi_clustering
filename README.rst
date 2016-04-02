@@ -53,8 +53,8 @@ Now we build and run via
 .. code:: bash
 
     $ gcc -c mpi_hello.c
-    $ gcc -o mpi_hello mpi_hello.o -lmpi
-    $ mpirun -np $(nproc) mpi_hello
+    $ gcc -o mpi_hello.x mpi_hello.o -lmpi
+    $ mpirun -np $(nproc) mpi_hello.x
     Hello world from process 2 of 4
     Hello world from process 3 of 4
     Hello world from process 1 of 4
