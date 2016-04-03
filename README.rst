@@ -183,15 +183,14 @@ First we generate generate ssh keys on the local node:
 
 .. code:: bash
 
-   local-node$ ssh-keygen -t rsa
+   local-node$  ssh-keygen -t rsa -f /home/nthompson/.ssh/id_rsa -N '' -C "MPI Keys"
    Generating public/private rsa key pair.
-   Enter file in which to save the key (/home/nthompson/.ssh/id_rsa):
-   Enter passphrase (empty for no passphrase):
-   Enter same passphrase again:
    Your identification has been saved in /home/nthompson/.ssh/id_rsa.
    Your public key has been saved in /home/nthompson/.ssh/id_rsa.pub.
+   The key fingerprint is:
+   SHA256:mgjcggMSHCwPh4xXqc1tPcp2ESM+ncOAt/XSG78RBnY MPI Keys
 
-Now we just scp mpi_rsa.pub over to our remote-node, and we're good right?
+Now we just scp id_rsa.pub over to our remote-node, and we're good right?
 No, we aren't, because scp also required ssh!
 So we have to find a node that has permissions to ssh into both local and remote, and copy the public key around that way:
 
@@ -217,7 +216,46 @@ Note that this can also be achieved by mounting networked disks, but we'll get a
 
 .. code:: bash
 
-   $ gcloud compute instances create standard-image --metadata-from-file startup-script=startup.sh \
+   $ gcloud compute instances create node-0 --metadata-from-file startup-script=startup.sh \
      --image ubuntu-15-10 --machine-type n1-standard-4 --preemptible --scopes=compute-rw,storage-full
+   $ gcloud compute ssh node-0
+   node-0$ ssh-keygen -t rsa -f ~/.ssh/id_rsa -N '' -C "MPI Keys"
+   node-0$ cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+   node-0$ # Make sure that your MPI executable is on a system path:
+   node-0$ sudo cp mpi_hello.x /usr/bin
+   
+Now we need to snapshot our VM:
+
+.. code:: bash
+
+   $ gcloud compute disks snapshot "node-0" --snapshot-names "mpi-node"
+   
+ Now we can create a cluster from out snapshot:
+ 
+ .. code:: bash
+ 
+    $ gcloud compute disks create mpi-disk-{1..5}  --source-snapshot "mpi-node"
+    $ for i in `seq 1 5`; do gcloud compute instances create mpi-node-$i --disk name=mpi-disk-$i,boot=yes,mode=rw; done;
+
+Now we can ssh from compute node to compute node without any other boilerplate:
+
+.. code:: bash
+
+   mpi-node-1:~$ ssh mpi-node-2
+   mpi-node-2:~$ ssh mpi-node-3
+   mpi-node-3:~$ ssh mpi-node-4 # ... so on
+   
+This was a necessary condition for MPI to work; let's see if it's sufficient:
+
+.. code:: bash
+
+   mpi-node-1:~$ mpirun -np 5 --host mpi-node-2,mpi-node-3,mpi-node-4,mpi-node-5 mpi_hello.x
+   Hello world from process 3 of 5
+   Hello world from process 4 of 5
+   Hello world from process 1 of 5
+   Hello world from process 2 of 5
+   Hello world from process 0 of 5
+   
+It works!
 
 .. _quota: https://docs.google.com/a/google.com/forms/d/1vb2MkAr9JcHrp6myQ3oTxCyBv2c7Iyc5wqIKqE3K4IE/viewform?entry.1036535597&entry.1823281902&entry.1934621431&entry.612627929&entry.666100773&entry.2004330804&entry.1287827925&entry.1005864466&entry.511996332&entry.308842821&entry.1506342651&entry.1193238839=No&entry.1270586847&entry.394661533&entry.1276962733&entry.1256670372&entry.1742484064&entry.15530
