@@ -264,13 +264,38 @@ Automate, automate, automate
 
 Thus far, we've only managed to get MPI to run on our cluster.
 We want to advance to *on demand clusters*, and for this we need automation.
-To do this, we'll use the gcloud python bindings, which we can install via
+To do this, we'll use the gcloud python bindings.
+Let's do an example by listing all compute instances and deleting one in our project:
 
 .. code:: bash
 
    $ sudo apt-get install -y python3-pip libffi-dev libssl-dev
-   $ pip3 install gcloud
+   $ pip3 install gcloud google-api-python-client
+   $ python3 -q
+   >>> from oauth2client.client import GoogleCredentials
+   >>> credentials = GoogleCredentials.get_application_default()
+   >>> from googleapiclient import discovery
+   >>> compute = discovery.build('compute', 'v1', credentials=credentials)
+   >>> r = compute.instances().list(project='my_project_id', zone='us-central1-c').execute()
+   >>> for i in r['items']:
+   ...     print(i['name'])
+   instance1
+   instance2
+   >>> compute.instances().delete(project='my_project_id', zone='us-central1-c', instance='instance1').execute()
+   
 
+If you got the following error:
 
+.. code:: bash
+
+   googleapiclient.errors.HttpError: <HttpError 403 when requesting https://www.googleapis.com/compute/v1/projects/my_project_id/zones/us-central1-c/instances?alt=json returned "Insufficient Permission">
+
+then you forget to specify the :code:`--scopes=compute-rw` flag when creating your instance.
+
+Creating an instance is a little more complicated than deleting and listing them.
+It's not much better than making a straight POST request to the API endpoint with raw JSON (see the example_ from google).
 
 .. _quota: https://docs.google.com/a/google.com/forms/d/1vb2MkAr9JcHrp6myQ3oTxCyBv2c7Iyc5wqIKqE3K4IE/viewform?entry.1036535597&entry.1823281902&entry.1934621431&entry.612627929&entry.666100773&entry.2004330804&entry.1287827925&entry.1005864466&entry.511996332&entry.308842821&entry.1506342651&entry.1193238839=No&entry.1270586847&entry.394661533&entry.1276962733&entry.1256670372&entry.1742484064&entry.15530
+
+.. _example: https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/compute/api/create_instance.py
+
