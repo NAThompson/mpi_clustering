@@ -258,4 +258,19 @@ This was a necessary condition for MPI to work; let's see if it's sufficient:
    
 It works!
 
+----------------------------
+Automate, automate, automate
+----------------------------
+
+Thus far, we've only managed to get MPI to run on our cluster.
+We want to advance to *on demand clusters*, and for this we need automation.
+To do this, we'll use the gcloud python bindings, which we can install via
+
+.. code:: bash
+
+   $ sudo apt-get install -y python3-pip libffi-dev libssl-dev
+   $ pip3 install gcloud
+
+
+
 .. _quota: https://docs.google.com/a/google.com/forms/d/1vb2MkAr9JcHrp6myQ3oTxCyBv2c7Iyc5wqIKqE3K4IE/viewform?entry.1036535597&entry.1823281902&entry.1934621431&entry.612627929&entry.666100773&entry.2004330804&entry.1287827925&entry.1005864466&entry.511996332&entry.308842821&entry.1506342651&entry.1193238839=No&entry.1270586847&entry.394661533&entry.1276962733&entry.1256670372&entry.1742484064&entry.15530
