@@ -270,7 +270,7 @@ Let's do an example by listing all compute instances and deleting one in our pro
 .. code:: bash
 
    $ sudo apt-get install -y python3-pip libffi-dev libssl-dev
-   $ pip3 install gcloud google-api-python-client
+   $ python3.5 -m pip install gcloud google-api-python-client
    $ python3 -q
    >>> from oauth2client.client import GoogleCredentials
    >>> credentials = GoogleCredentials.get_application_default()
@@ -294,6 +294,13 @@ then you forget to specify the :code:`--scopes=compute-rw` flag when creating yo
 
 Creating an instance is a little more complicated than deleting and listing them.
 It's not much better than making a straight POST request to the API endpoint with raw JSON (see the example_ from google).
+
+However, when all is said and done, we can (hopefully) generate our cluster using:
+
+.. code:: bash
+
+   $ ./run_create_cluster.py 'my_project_id' --cluster_name 'clustah' --nodes 3
+   
 
 .. _quota: https://docs.google.com/a/google.com/forms/d/1vb2MkAr9JcHrp6myQ3oTxCyBv2c7Iyc5wqIKqE3K4IE/viewform?entry.1036535597&entry.1823281902&entry.1934621431&entry.612627929&entry.666100773&entry.2004330804&entry.1287827925&entry.1005864466&entry.511996332&entry.308842821&entry.1506342651&entry.1193238839=No&entry.1270586847&entry.394661533&entry.1276962733&entry.1256670372&entry.1742484064&entry.15530
 
