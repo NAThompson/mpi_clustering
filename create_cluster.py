@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 # This code is based on:
 # https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/compute/api/create_instance.py
-
-from googleapiclient import discovery
-from oauth2client.client import GoogleCredentials
-
+import time
 
 def list_instance_names(compute, project, zone):
     result = compute.instances().list(project=project, zone=zone).execute()
@@ -13,16 +10,28 @@ def list_instance_names(compute, project, zone):
         names.append(r['name'])
     return names
 
+def wait_for_operation(compute, project, zone, operation):
+    print('Waiting for operation to finish...')
+    while True:
+        result = compute.zoneOperations().get(
+            project=project,
+            zone=zone,
+            operation=operation).execute()
+
+        if result['status'] == 'DONE':
+            print("done.")
+            if 'error' in result:
+                raise Exception(result['error'])
+            return result
+        
+        time.sleep(1)
 
 def delete_instance(compute, project, zone, name):
-    request= compute.instances().delete(project=project, zone=zone, name=name)
+    request = compute.instances().delete(project=project, zone=zone, name=name)
     return request.execute()
 
 
 def create_boot_disk_from_snapshot(compute, project, zone, disk_name, snapshot_name):
-    # Will throw if snapshot doesn't exist:
-    snapshot = compute.snapshots().get(project=project, snapshot=snapshot_name).execute()
-
     snapshot_url = 'projects/{}/global/snapshots/{}'.format(project, snapshot_name)
     request = compute.disks().insert(project=project,
                                      zone=zone,
@@ -35,8 +44,8 @@ def create_instance_from_boot_disk(compute, project, zone, instance_name, boot_d
     source = "projects/{}/zones/{}/disks/{}".format(project, zone, boot_disk_name)
     network = "projects/{}/global/networks/default".format(project)
     config = {
-        'name': name,
-        'machineType': machine_type,   
+        'name': instance_name,
+        'machineType': machine_type,
         'disks': [
             {
                 'boot': True,
@@ -48,7 +57,7 @@ def create_instance_from_boot_disk(compute, project, zone, instance_name, boot_d
         ],
         "networkInterfaces": [
             {
-                "network": project,
+                "network": network,
                 "accessConfigs": [
                     {
                         "name": "External NAT",
@@ -69,7 +78,8 @@ def create_cluster(compute, project, zone, cluster_name, num_instances, snapshot
     for i in range(num_instances):
         instance_name = cluster_name + "-" + str(i)
         boot_disk_name = instance_name
-        create_boot_disk_from_snapshot(compute, project, zone, boot_disk_name, snapshot_name)
+        operation = create_boot_disk_from_snapshot(compute, project, zone, boot_disk_name, snapshot_name)
+        wait_for_operation(compute, project, zone, operation['name'])
         create_instance_from_boot_disk(compute, project, zone, instance_name, boot_disk_name)
 
     return
