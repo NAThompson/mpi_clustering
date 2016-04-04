@@ -1,7 +1,7 @@
 Creating an MPI Cluster on gcloud
 =================================
 
-    A quick tutorial
+    A quick tutorial showing how to create an on-demand MPI cluster on gcloud
 
 -----------------------
 Running a basic MPI job
@@ -33,20 +33,25 @@ Now let's run a super-trivial example; call it mpi_hello.c
 
 .. code:: c
 
-    #include <stdio.h>
-    #include <mpi/mpi.h>
+   #include <stdio.h>
+   #include <unistd.h>
+   #include <string.h>
+   #include <mpi/mpi.h>
 
-    int main (int argc, char** argv)
-    {
+   int main (int argc, char** argv)
+   {
         int rank, size;
 
         MPI_Init (&argc, &argv);
-        MPI_Comm_rank (MPI_COMM_WORLD, &rank); 
+        MPI_Comm_rank (MPI_COMM_WORLD, &rank);
         MPI_Comm_size (MPI_COMM_WORLD, &size);
-        printf( "Hello world from process %d of %d\n", rank, size );
+        char hostname[150];
+        memset(hostname, 0, 150);
+        gethostname(hostname, 150);
+        printf( "Hello world from process %d of %d on host %s\n", rank, size, hostname );
         MPI_Finalize();
         return 0;
-    }
+   }
 
 Now we build and run via
 
