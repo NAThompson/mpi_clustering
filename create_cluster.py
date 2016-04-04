@@ -27,7 +27,7 @@ def wait_for_operation(compute, project, zone, operation):
         time.sleep(1)
 
 def delete_instance(compute, project, zone, name):
-    request = compute.instances().delete(project=project, zone=zone, name=name)
+    request = compute.instances().delete(project=project, zone=zone, instance=name)
     return request.execute()
 
 
@@ -75,11 +75,24 @@ def create_instance_from_boot_disk(compute, project, zone, instance_name, boot_d
 
 
 def create_cluster(compute, project, zone, cluster_name, num_instances, snapshot_name):
+    new_instances = []
+    boot_disk_tasks = []
     for i in range(num_instances):
         instance_name = cluster_name + "-" + str(i)
+        new_instances.append(instance_name)
         boot_disk_name = instance_name
-        operation = create_boot_disk_from_snapshot(compute, project, zone, boot_disk_name, snapshot_name)
-        wait_for_operation(compute, project, zone, operation['name'])
-        create_instance_from_boot_disk(compute, project, zone, instance_name, boot_disk_name)
+        task = create_boot_disk_from_snapshot(compute, project, zone, boot_disk_name, snapshot_name)
+        boot_disk_tasks.append(task)
 
-    return
+    instance_tasks = []
+    for i in range(num_instances):
+        print("Waiting for creation of boot disk {}".format(new_instances[i]))
+        wait_for_operation(compute, project, zone, boot_disk_tasks[i]['name'])
+        task = create_instance_from_boot_disk(compute, project, zone, new_instances[i], new_instances[i])
+        instance_tasks.append(task)
+
+    for i in range(num_instances):
+        print("Waiting for creation of instance {}".format(new_instances[i]))
+        wait_for_operation(compute, project, zone, instance_tasks[i]['name'])
+
+    return new_instances

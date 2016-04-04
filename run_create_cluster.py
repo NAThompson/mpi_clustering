@@ -1,10 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.5
 
+import time
 import argparse
+import subprocess
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
 
-from create_cluster import create_cluster, list_instance_names
+from create_cluster import create_cluster, list_instance_names, delete_instance
 
 
 def main(project, zone, cluster_name, num_instances, snapshot_name):
@@ -13,13 +15,26 @@ def main(project, zone, cluster_name, num_instances, snapshot_name):
 
     print('Creating cluster . . .')
 
-    create_cluster(compute, project, zone, cluster_name, num_instances, snapshot_name)
+    new_instances = create_cluster(compute, project, zone, cluster_name, num_instances, snapshot_name)
+    
+    print("new instances: {}".format(new_instances))
 
-    instances = list_instance_names(compute, project, zone)
-    print("We now have the following instances:")
-    for instance in instances:
-        print(instance)
+    print("Running mpi job:")
+    cmd = "mpirun -np {} --host ".format(len(new_instances))
+    for instance in new_instances:
+        cmd += "{},".format(instance)
 
+    cmd += " mpi_hello.x"
+    print("Command about to be run:\n {}".format(cmd))
+
+    # gcloud recycles the internal IP address alot, leading to MITM warnings:
+    subprocess.run('echo "" > ~/.ssh/known_hosts', shell=True, check=True)
+    # Give the cluster some time to warm up, otherwise we'll get "Connection Refused"
+    time.sleep(15)
+    subprocess.run(cmd, shell=True, check=True)
+    print("Computation done, deleting instances:")
+    for instance in new_instances:
+        delete_instance(compute, project, zone, instance)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__,
@@ -34,10 +49,10 @@ if __name__ == '__main__':
     parser.add_argument('--cluster_name', default='demo-cluster',
                         help='New instance name.')
 
-    parser.add_argument('--nodes', default=5,
+    parser.add_argument('--nodes', default=5, type=int,
                         help='Number of nodes in cluster')
 
-    parser.add_argument('--snapshot_name', default='mpi-node',
+    parser.add_argument('--snapshot_name', default='mpi-snapshot',
                         help='Name of snapshot')
 
     args = parser.parse_args()
